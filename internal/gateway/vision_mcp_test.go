@@ -127,7 +127,7 @@ func TestVisionMCPWithNoSeer(t *testing.T) {
 	}
 	fresh(t)
 	m = readMCP(t, visionPost(lanGuard(New().Handler()), "127.0.0.1:50000", analyzeCall("data:image/png;base64,aGVsbG8=", "")))
-	if !m.Result.IsError || !strings.Contains(m.Result.Content[0].Text, "no model that sees images") {
+	if !m.Result.IsError || !strings.Contains(m.Result.Content[0].Text, "no image recognition model available") {
 		t.Fatalf("%+v", m)
 	}
 }

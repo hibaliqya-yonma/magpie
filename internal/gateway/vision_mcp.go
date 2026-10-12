@@ -122,7 +122,7 @@ func (s *Server) visionMCPRun(r *http.Request, image, prompt string) (string, er
 		if provider.HeldSettings().Vision == "off" {
 			return "", searchMCPError("Image recognition is off in magpie: pick a model for it in Settings → Models → Image recognition")
 		}
-		return "", searchMCPError("magpie has no model that sees images: add a provider with one, or pick one in Settings → Models → Image recognition")
+		return "", searchMCPError("magpie has no image recognition model available: enable one with allowance in Settings → Models → Image recognition, or wait for its usage window to reset")
 	}
 	release, refused := budget.Reserve(access.Caller(r.Context()), int64(len(src)+len(prompt)), "", limitClock())
 	if refused != nil {

@@ -231,6 +231,20 @@ Covered by `TestSearchMCPServesWebSearch`, `TestSearchMCPWithNoSearcher`,
 
 ## Image recognition as an MCP server
 
+Automatic image recognition (`AutoVision` in
+[`vision.go`](../../internal/gateway/vision.go)) keeps its preference for
+Claude accounts, then Codex accounts, API keys and other accounts, among
+enabled vision models whose eligible accounts or keys still have allowance.
+It uses routing's cached allowance, account caps and quota/credit rests,
+including model-specific pools. Unknown allowance remains eligible; a known
+full window or quota refusal is skipped until it renews. An available spare
+account or another vision model on the same provider keeps that provider in
+the choice. When none is available, automatic image description sends no
+upstream request and explains that a model with allowance or a reset is
+needed. A model explicitly picked in Settings keeps its existing behavior.
+Covered by `TestAutoVisionPassesOverOneOut`,
+`TestVisionDoesNotAskSpentDescriber` and `TestVisionSpentSubscriptionAccounts`.
+
 `VisionMCPPath`, `/mcp/magpie/vision`, serves the model that describes
 images to a model that can't see them (`seer`: Settings › Models › Image
 recognition, else `AutoVision`'s) as an MCP server with one `analyze_image`

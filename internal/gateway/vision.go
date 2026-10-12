@@ -140,7 +140,7 @@ func missingSeerNote() string {
 
 // noSeerNote is what a request turned away for an image says of why no
 // model described it: the picked one is missing, Image recognition is
-// off, or none of the models the user enabled can see.
+// off, or no enabled model can currently describe it.
 func noSeerNote() string {
 	if n := missingSeerNote(); n != "" {
 		return n
@@ -149,7 +149,7 @@ func noSeerNote() string {
 		return "; Image recognition is off in magpie's Settings → Models"
 	}
 	if _, ok := seer(); !ok {
-		return "; none of the models enabled in magpie can see images to describe it: enable one that can, or pick one in Settings → Models → Image recognition"
+		return "; no enabled image recognition model is available: enable one with allowance in Settings → Models → Image recognition, or wait for its usage window to reset"
 	}
 	return ""
 }
@@ -167,8 +167,11 @@ func autoSeerNote(see string) string {
 // Settings name none: a small model that sees, of the models the user
 // enabled on the providers switched on (smallModel) — a
 // Claude account's, a Codex account's, the cheapest of an API key's,
-// another account's. "" when no model sees.
+// another account's. Models whose eligible accounts or keys are all out
+// of allowance are skipped until their windows or quota rests renew.
+// "" when no enabled model that sees has allowance available.
 func AutoVision() string {
+	//> Keep the existing provider preference among models with allowance.
 	tier := func(p provider.Provider) int {
 		switch {
 		case p.Account != nil && p.Account.Agent == "claude":
@@ -180,6 +183,7 @@ func AutoVision() string {
 		}
 		return 3
 	}
+	now := time.Now()
 	best, bestTier, bestCost := "", 0, 0.0
 	for _, p := range provider.All() {
 		if !p.On() || p.DecideOnly() {
@@ -189,7 +193,9 @@ func AutoVision() string {
 		if best != "" && t > bestTier {
 			continue
 		}
-		m, cost := smallModelWhere(p, sees)
+		m, cost := smallModelWhere(p, func(m catalog.Model) bool {
+			return sees(m) && !visionSpent(p, m.ID, now)
+		})
 		if m == "" {
 			continue
 		}
@@ -198,6 +204,20 @@ func AutoVision() string {
 		}
 	}
 	return best
+}
+
+// visionSpent checks the same eligible accounts, caps, model pools and
+// cached allowance as routing. Unknown allowance can still be tried;
+// a quota refusal remains authoritative until its rest expires.
+func visionSpent(p provider.Provider, model string, now time.Time) bool {
+	//> Keep the model while any eligible account or key can still spend.
+	for _, c := range perKey(p, model, provider.Chat) {
+		r, rests := restingOf(c)
+		if c.full(now).IsZero() && (!rests || r.Why != failQuota && r.Why != failCredit) {
+			return false
+		}
+	}
+	return true
 }
 
 // sees is whether a model takes images.
